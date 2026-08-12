@@ -65,6 +65,7 @@ export function CodeInput({ value, onChange, disabled }: CodeInputProps) {
           onFocus={() => setFocused(index)}
           onBlur={() => setFocused(null)}
           disabled={disabled}
+          maxLength={6}
           inputMode="numeric"
           autoComplete="one-time-code"
           aria-label={`Цифра ${index + 1} из 6`}
