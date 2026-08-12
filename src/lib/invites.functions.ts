@@ -83,7 +83,7 @@ export const registerWithInvite = createServerFn({ method: "POST" })
     if (consumed.error) {
       await supabaseAdmin.from("profiles").delete().eq("id", userId);
       await supabaseAdmin.auth.admin.deleteUser(userId);
-      return { ok: false as const, error: "Код уже использован. Попросите новый." };
+      return { ok: false as const, error: `Код: ${consumed.error.message}` };
     }
 
     const inviter = (consumed.data as string | null) ?? null;
