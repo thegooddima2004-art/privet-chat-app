@@ -22,21 +22,25 @@ jobs:
           mkdir -p android-project
           unzip -o krug-android-apk-project.zip -d android-project
 
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
       - name: Find Gradle project
         run: |
-          GRADLEW=$(find android-project -name gradlew -type f | head -n 1)
-          if [ -z "$GRADLEW" ]; then
-            echo "gradlew not found"
+          GRADLE_DIR=$(dirname "$(find android-project -name build.gradle -type f | head -n 1)")
+          if [ -z "$GRADLE_DIR" ]; then
+            echo "build.gradle not found"
             find android-project -maxdepth 4 -type f | head -100
             exit 1
           fi
-          echo "GRADLEW=$GRADLEW" >> "$GITHUB_ENV"
+          echo "GRADLE_DIR=$GRADLE_DIR" >> "$GITHUB_ENV"
 
       - name: Build APK
         run: |
-          chmod +x "$GRADLEW"
-          cd "$(dirname "$GRADLEW")"
-          ./gradlew assembleDebug
+          cd "$GRADLE_DIR"
+          gradle assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
