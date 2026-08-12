@@ -12,7 +12,7 @@ type Mode = "login" | "register";
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (search: Record<string, unknown>): { mode: Mode } => ({
-    mode: search.mode === "register" ? "register" : "login",
+    mode: search["mode"] === "register" ? "register" : "login",
   }),
   head: () => ({
     meta: [
