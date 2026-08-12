@@ -51,16 +51,6 @@ export const registerWithInvite = createServerFn({ method: "POST" })
 
     const userId = created.data.user.id;
 
-    // Погашение кода атомарно: два человека один код использовать не смогут.
-    const consumed = await supabaseAdmin.rpc("consume_invite", {
-      _code: data.code,
-      _user_id: userId,
-    });
-    if (consumed.error) {
-      await supabaseAdmin.auth.admin.deleteUser(userId);
-      return { ok: false as const, error: "Код уже использован. Попросите новый." };
-    }
-
     const base =
       (data.email.split("@")[0] ?? "user").replace(/[^a-z0-9_]/g, "").slice(0, 20) || "user";
     let username = base;
@@ -74,15 +64,31 @@ export const registerWithInvite = createServerFn({ method: "POST" })
       username = `${base}${Math.floor(Math.random() * 9000) + 1000}`;
     }
 
+    // Профиль создаётся раньше погашения кода: на used_by стоит связь с профилем.
     const profile = await supabaseAdmin.from("profiles").insert({
       id: userId,
       display_name: data.displayName,
       username,
-      invited_by: (consumed.data as string | null) ?? null,
     });
     if (profile.error) {
       await supabaseAdmin.auth.admin.deleteUser(userId);
       return { ok: false as const, error: "Не удалось создать профиль. Попробуйте ещё раз." };
+    }
+
+    // Погашение кода атомарно: два человека один код использовать не смогут.
+    const consumed = await supabaseAdmin.rpc("consume_invite", {
+      _code: data.code,
+      _user_id: userId,
+    });
+    if (consumed.error) {
+      await supabaseAdmin.from("profiles").delete().eq("id", userId);
+      await supabaseAdmin.auth.admin.deleteUser(userId);
+      return { ok: false as const, error: "Код уже использован. Попросите новый." };
+    }
+
+    const inviter = (consumed.data as string | null) ?? null;
+    if (inviter) {
+      await supabaseAdmin.from("profiles").update({ invited_by: inviter }).eq("id", userId);
     }
 
     await supabaseAdmin.from("user_roles").insert({ user_id: userId, role: "user" });
