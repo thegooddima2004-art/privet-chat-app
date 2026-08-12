@@ -1,0 +1,45 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Unpack Android project
+        run: |
+          mkdir -p android-project
+          unzip -o krug-android-apk-project.zip -d android-project
+
+      - name: Find Gradle project
+        run: |
+          GRADLEW=$(find android-project -name gradlew -type f | head -n 1)
+          if [ -z "$GRADLEW" ]; then
+            echo "gradlew not found"
+            find android-project -maxdepth 4 -type f | head -100
+            exit 1
+          fi
+          echo "GRADLEW=$GRADLEW" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        run: |
+          chmod +x "$GRADLEW"
+          cd "$(dirname "$GRADLEW")"
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: android-project/**/build/outputs/apk/**/*.apk
